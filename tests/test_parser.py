@@ -84,3 +84,55 @@ class TestSchematicParser:
         sch = parser.parse_text(MINIMAL_SCH)
         net_names = {n.name for n in sch.nets}
         assert "GND" in net_names
+
+
+LIB_SYMBOL_SCH = """(kicad_sch
+  (version 20250114)
+  (lib_symbols
+    (symbol "Device:R"
+      (property "Reference" "R")
+      (property "Value" "R")
+      (symbol "R_0_1"
+        (pin passive line (at 0 3.81 270) (name "~") (number "1"))
+        (pin passive line (at 0 -3.81 90) (name "~") (number "2"))
+      )
+    )
+  )
+  (symbol
+    (lib_id "Device:R")
+    (at 100 80 0)
+    (uuid "r1")
+    (property "Reference" "R1")
+    (property "Value" "10k")
+  )
+  (wire (pts (xy 100 76.19) (xy 120 76.19)))
+  (wire (pts (xy 120 76.19) (xy 120 60)))
+  (label "VIN" (at 120 60 0))
+  (no_connect (at 100 83.81))
+)"""
+
+
+class TestLibrarySymbols:
+    def _parse(self):
+        return SchematicParser().parse_text(LIB_SYMBOL_SCH, filename="lib.kicad_sch")
+
+    def test_lib_symbol_definitions_are_not_components(self):
+        sch = self._parse()
+        assert [c.reference for c in sch.components] == ["R1"]
+
+    def test_pin_geometry_from_library_symbol(self):
+        sch = self._parse()
+        positions = {p.number: p.position for p in sch.components[0].pins}
+        assert positions["1"] == (100.0, 76.19)
+        assert positions["2"] == (100.0, 83.81)
+
+    def test_wire_t_junction_joins_label_to_pin(self):
+        sch = self._parse()
+        pin1 = sch.components[0].pins[0]
+        assert pin1.connected is True
+        assert pin1.net_name == "VIN"
+
+    def test_no_connect_marker_applied(self):
+        sch = self._parse()
+        pin2 = sch.components[0].pins[1]
+        assert pin2.no_connect is True
