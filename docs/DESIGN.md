@@ -118,6 +118,18 @@ No changes to the parser, analyzer, or report generator are needed.
 
 If a rule raises an exception during execution, the analyzer catches it and produces an ERROR-severity `CheckResult` with the exception message. Other rules continue executing.
 
+### 5.4 Readiness Scoring
+
+`AnalysisReport` derives three values from the raw `CheckResult` list:
+
+- `readiness_level` — `NOT_READY` when any ERROR failed, `NEEDS_REVIEW` when only
+  warning/info checks failed, otherwise `READY`.
+- `readiness_score` — severity-weighted percentage: each check contributes its
+  weight (ERROR 3, WARNING 2, INFO 1) to the maximum, and failed checks forfeit
+  it. An empty report scores 100.
+- `recommendations` — failed checks that carry a recommendation, ordered by
+  descending severity so reports lead with the most important fix.
+
 ## 6. Data Models
 
 ```
@@ -129,7 +141,7 @@ Schematic
 │   ├── reference, value, lib_id, footprint
 │   ├── properties: dict[str, str]
 │   └── pins: list[Pin]
-│       ├── number, name, connected, net_name
+│       ├── number, name, connected, net_name, position, no_connect
 └── nets: list[Net]
     ├── name: str
     └── connected_pins: list[tuple[str, str]]
@@ -152,11 +164,14 @@ CheckResult
 | Dataclasses over dicts | Type safety, IDE support, clear schema |
 | Pluggable rule engine | Easy to add/remove/customize checks without touching core |
 | ERROR vs WARNING severity | Errors block simulation readiness; warnings are advisory |
+| Severity-weighted score | A single 0-100 number that still reflects issue importance |
+| Union-find net building | Handles T-junctions and multi-segment wires without a full ERC engine |
 | Self-contained HTML reports | No server needed; reports open in any browser |
 
 ## 8. Limitations
 
-- Net connectivity detection uses wire/label proximity heuristics; complex topologies may have false positives for floating pins
+- Net connectivity is rebuilt from wires, labels, and pin geometry rather than KiCad's own ERC engine; unusual topologies may still yield false positives for floating pins
+- Buses and bus entries are not resolved
 - Hierarchical sheets are not recursively analyzed (single-sheet only)
 - SPICE model validation checks for presence, not correctness of model parameters
 - Plugin schematic path detection depends on KiCad API availability

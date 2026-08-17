@@ -18,7 +18,8 @@ Designing for simulation in KiCad requires more than a correct schematic — com
 - **Footprint Assignment** — Warns about components without PCB footprints
 - **Floating Pin Detection** — Identifies pins that appear unconnected
 - **Simulation Metadata** — Checks for `Sim.Device`, `Sim.Pins`, and `Sim.Params` properties
-- **HTML Reports** — Generates styled, self-contained reports with severity levels and recommendations
+- **Readiness Score** — Severity-weighted 0-100 score plus a Ready / Needs Review / Not Ready verdict
+- **HTML Reports** — Generates styled, self-contained reports with severity levels and prioritized recommendations
 - **CLI Support** — Run analysis from the command line without opening KiCad
 - **Zero External Dependencies** — Core engine uses only Python standard library; KiCad provides wxPython at runtime
 
@@ -63,7 +64,7 @@ See [docs/INSTALLATION.md](docs/INSTALLATION.md) for full instructions.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/KiCad-SimReady.git
+git clone https://github.com/csyuvraj/KiCad-SimReady.git
 
 # Copy to KiCad plugin directory
 # Linux:
@@ -95,26 +96,49 @@ python -m simready.plugin examples/sample.kicad_sch
 
 # Specify output directory and open report
 python -m simready.plugin examples/sample.kicad_sch -o ./reports --open
+
+# Fail the command (exit 1) when the schematic is not simulation ready
+python -m simready.plugin examples/sample.kicad_sch --strict
+```
+
+Example output:
+
+```text
+KiCad SimReady — sample
+Status: Not Simulation Ready
+Readiness score: 42/100
+Passed: 13  Failed: 8  Warnings: 6
+Report: examples/sample_simready_report.html
 ```
 
 ### Python API
 
 ```python
-from simready.core.parser import SchematicParser
-from simready.plugin import create_analyzer
+from simready.plugin import analyze_schematic
 from simready.reports.html_report import HtmlReportGenerator
 
-parser = SchematicParser()
-schematic = parser.parse_file("my_circuit.kicad_sch")
+report = analyze_schematic("my_circuit.kicad_sch")
 
-analyzer = create_analyzer()
-report = analyzer.analyze(schematic)
-
-print(f"Simulation ready: {report.is_simulation_ready}")
-print(f"Passed: {report.pass_count}, Failed: {report.fail_count}")
+print(report.readiness_level.label)      # "Needs Review"
+print(report.readiness_score)            # 78
+print(report.pass_count, report.fail_count)
+for check in report.recommendations:     # ordered by severity
+    print(check.component_ref, check.recommendation)
 
 HtmlReportGenerator().generate_file(report, "report.html")
 ```
+
+### Readiness scoring
+
+Every check carries a severity weight (`ERROR` 3, `WARNING` 2, `INFO` 1). The
+score is the share of weight earned by passing checks, so an unresolved error
+costs three times as much as an informational finding:
+
+| Readiness level | Meaning |
+|---|---|
+| `READY` | No failing checks |
+| `NEEDS_REVIEW` | Warnings/info failures only — simulation will usually run |
+| `NOT_READY` | At least one error-severity failure |
 
 ## Screenshots
 
