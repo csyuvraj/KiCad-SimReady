@@ -8,7 +8,17 @@ from simready.core.models import CheckResult, Schematic, Severity
 from simready.rules.base_rule import BaseRule
 
 VALUE_REQUIRED_PREFIXES = ("R", "C", "L")
-PLACEHOLDER_VALUES = {"", "~", "?", "TBD", "VALUE", "VAL"}
+PLACEHOLDER_VALUES = {"", "~", "?", "TBD", "VALUE", "VAL", "DNP"}
+UNIT_HINTS = {"R": "Ω", "C": "F", "L": "H"}
+
+# SI prefixes accepted by ngspice / KiCad value fields.
+_PREFIX = r"(?:meg|mil|[pnumkKMGTμµ])"
+_UNIT = r"(?:ohms?|Ω|R|F|H)?"
+# Matches "10k", "4.7uF", "2k2", "1meg", "100 nF", "1e-9", "0R".
+VALUE_PATTERN = re.compile(
+    rf"^\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\s*(?:{_PREFIX}\s*\d*)?\s*{_UNIT}$",
+    re.IGNORECASE,
+)
 
 
 class ComponentValueRule(BaseRule):
@@ -18,15 +28,22 @@ class ComponentValueRule(BaseRule):
     description = "Checks that resistors, capacitors, and inductors have valid values."
 
     def check(self, schematic: Schematic) -> list[CheckResult]:
+        """Validate the value field of every R/C/L component.
+
+        Args:
+            schematic: Schematic to inspect.
+
+        Returns:
+            One CheckResult per passive component.
+        """
         results: list[CheckResult] = []
 
         for comp in schematic.components:
-            ref_prefix = comp.reference.rstrip("0123456789")
-            if ref_prefix not in VALUE_REQUIRED_PREFIXES:
+            if comp.ref_prefix not in VALUE_REQUIRED_PREFIXES:
                 continue
 
             value = comp.value.strip()
-            if self._is_valid_value(value, ref_prefix):
+            if self._is_valid_value(value):
                 results.append(
                     CheckResult(
                         rule_name=self.name,
@@ -37,7 +54,7 @@ class ComponentValueRule(BaseRule):
                     )
                 )
             else:
-                unit_hint = {"R": "Ω", "C": "F", "L": "H"}.get(ref_prefix, "")
+                unit_hint = UNIT_HINTS.get(comp.ref_prefix, "")
                 results.append(
                     CheckResult(
                         rule_name=self.name,
@@ -56,13 +73,19 @@ class ComponentValueRule(BaseRule):
         return results
 
     @staticmethod
-    def _is_valid_value(value: str, prefix: str) -> bool:
+    def _is_valid_value(value: str) -> bool:
+        """Return True when the value parses as a SPICE-compatible quantity.
+
+        Accepts plain numbers, SI prefixes (including ngspice's ``meg``),
+        optional units, and the ``2k2``/``4u7`` engineering notation.
+
+        Args:
+            value: Raw component value field.
+
+        Returns:
+            True if the value is usable by a simulator.
+        """
+        value = value.strip()
         if value.upper() in PLACEHOLDER_VALUES:
             return False
-        patterns = {
-            "R": r"^\d+(\.\d+)?[kKmMμu]?$|^\d+(\.\d+)?[ΩOhm]*$",
-            "C": r"^\d+(\.\d+)?[pPnNμu]?F?$",
-            "L": r"^\d+(\.\d+)?[pPnNμu]?H?$",
-        }
-        pattern = patterns.get(prefix, r".+")
-        return bool(re.match(pattern, value, re.IGNORECASE))
+        return bool(VALUE_PATTERN.match(value))

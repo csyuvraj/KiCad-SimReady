@@ -5,10 +5,15 @@ from __future__ import annotations
 import html
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from simready.core.analyzer import AnalysisReport
-from simready.core.models import CheckResult, Severity
+from simready.core.models import CheckResult, ReadinessLevel, Severity
+
+_BADGE_CLASSES = {
+    ReadinessLevel.READY: "badge-ready",
+    ReadinessLevel.NEEDS_REVIEW: "badge-review",
+    ReadinessLevel.NOT_READY: "badge-not-ready",
+}
 
 
 class HtmlReportGenerator:
@@ -52,7 +57,25 @@ class HtmlReportGenerator:
         margin-top: 0.75rem;
     }
     .badge-ready { background: rgba(34,197,94,0.15); color: var(--pass); }
+    .badge-review { background: rgba(245,158,11,0.15); color: var(--warn); }
     .badge-not-ready { background: rgba(239,68,68,0.15); color: var(--error); }
+    .score {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .score .number { font-size: 2.5rem; font-weight: 700; }
+    .score-bar {
+        height: 0.5rem;
+        border-radius: 9999px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    .score-bar .fill { height: 100%; background: var(--accent); }
+    .recommendation-list { list-style: none; }
     .summary-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -127,16 +150,25 @@ class HtmlReportGenerator:
     """
 
     def generate(self, report: AnalysisReport) -> str:
-        """Generate a complete HTML report string."""
+        """Generate a complete HTML report string.
+
+        Args:
+            report: Analysis results to render.
+
+        Returns:
+            Self-contained HTML document.
+        """
         summary = report.summary()
         project = html.escape(summary["project_name"])
-        ready = report.is_simulation_ready
-        badge_class = "badge-ready" if ready else "badge-not-ready"
-        badge_text = "Simulation Ready" if ready else "Not Simulation Ready"
+        level = report.readiness_level
+        badge_class = _BADGE_CLASSES[level]
+        badge_text = html.escape(level.label)
+        score = summary["readiness_score"]
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
         passed_html = self._render_checks(report.passed_checks, passed=True)
         failed_html = self._render_checks(report.failed_checks, passed=False)
+        recommendations_html = self._render_recommendations(report)
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -153,6 +185,12 @@ class HtmlReportGenerator:
             <p class="subtitle">Project: {project}</p>
             <span class="badge {badge_class}">{badge_text}</span>
         </header>
+
+        <div class="score">
+            <span class="number">{score}</span>
+            <span class="label">Simulation Readiness Score / 100</span>
+        </div>
+        <div class="score-bar"><div class="fill" style="width:{score}%"></div></div>
 
         <div class="summary-grid">
             <div class="stat-card">
@@ -179,6 +217,11 @@ class HtmlReportGenerator:
         </section>
 
         <section>
+            <h2>Recommendations ({len(report.recommendations)})</h2>
+            {recommendations_html}
+        </section>
+
+        <section>
             <h2>Passed Checks ({report.pass_count})</h2>
             {"<ul class='check-list'>" + passed_html + "</ul>" if passed_html else "<p style='color:var(--muted)'>No passed checks recorded.</p>"}
         </section>
@@ -193,20 +236,49 @@ class HtmlReportGenerator:
     def generate_file(
         self, report: AnalysisReport, output_path: str | Path
     ) -> Path:
-        """Write HTML report to a file and return the path."""
+        """Write HTML report to a file and return the path.
+
+        Args:
+            report: Analysis results to render.
+            output_path: Destination ``.html`` path.
+
+        Returns:
+            Path the report was written to.
+        """
         path = Path(output_path)
         path.write_text(self.generate(report), encoding="utf-8")
         return path
 
-    def _render_checks(
-        self, checks: list[CheckResult], passed: bool
-    ) -> str:
-        items: list[str] = []
-        for check in checks:
-            items.append(self._render_check_item(check, passed))
-        return "\n".join(items)
+    def _render_checks(self, checks: list[CheckResult], passed: bool) -> str:
+        """Render a list of checks as HTML list items."""
+        return "\n".join(self._render_check_item(check, passed) for check in checks)
 
-    def _render_check_item(self, check: CheckResult, passed: bool) -> str:
+    @staticmethod
+    def _render_recommendations(report: AnalysisReport) -> str:
+        """Render prioritized recommendations, or a note when there are none."""
+        if not report.recommendations:
+            return "<p style='color:var(--muted)'>No action required.</p>"
+        items = "\n".join(
+            f'<li class="check-item fail">'
+            f'<div class="header">'
+            f'<span class="severity severity-{check.severity.value}">'
+            f"{html.escape(check.severity.value)}</span>"
+            f'<span class="rule-name">{html.escape(check.rule_name)}</span>'
+            + (
+                f'<span class="rule-name">[{html.escape(check.component_ref)}]</span>'
+                if check.component_ref
+                else ""
+            )
+            + "</div>"
+            f'<p class="message">{html.escape(check.recommendation)}</p>'
+            "</li>"
+            for check in report.recommendations
+        )
+        return f"<ul class='recommendation-list'>{items}</ul>"
+
+    @staticmethod
+    def _render_check_item(check: CheckResult, passed: bool) -> str:
+        """Render a single check as an HTML list item."""
         sev_class = f"severity-{check.severity.value}"
         item_class = "pass" if passed else "fail"
         if not passed and check.severity == Severity.WARNING:

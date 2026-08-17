@@ -1,13 +1,14 @@
 """Integration tests for the plugin CLI and end-to-end workflow."""
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-from simready.core.analyzer import Analyzer
+from simready.core.models import ReadinessLevel
 from simready.core.parser import SchematicParser
-from simready.plugin import create_analyzer, run_analysis
-from simready.reports.html_report import HtmlReportGenerator
+from simready.plugin import analyze_schematic, create_analyzer, run_analysis
 
 SAMPLE_SCH = Path(__file__).parent.parent / "examples" / "sample.kicad_sch"
 
@@ -59,3 +60,59 @@ class TestEndToEnd:
             "SimulationParameterRule",
         }
         assert expected == rule_names
+
+
+class TestCli:
+    def test_cli_module_entrypoint(self, sample_schematic, tmp_path):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "simready.plugin",
+                str(sample_schematic),
+                "-o",
+                str(tmp_path),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "KiCad SimReady" in result.stdout
+        assert "Readiness score:" in result.stdout
+        assert (tmp_path / "sample_simready_report.html").exists()
+
+    def test_cli_strict_exit_code(self, sample_schematic, tmp_path):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "simready.plugin",
+                str(sample_schematic),
+                "-o",
+                str(tmp_path),
+                "--strict",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent,
+        )
+        assert result.returncode == 1
+
+    def test_cli_missing_file(self, tmp_path):
+        result = subprocess.run(
+            [sys.executable, "-m", "simready.plugin", str(tmp_path / "nope.kicad_sch")],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent,
+        )
+        assert result.returncode == 1
+        assert "not found" in result.stdout.lower()
+
+
+class TestSampleReadiness:
+    def test_sample_report_has_score_and_recommendations(self, sample_schematic):
+        report = analyze_schematic(sample_schematic)
+        assert 0 <= report.readiness_score <= 100
+        assert report.readiness_level is not ReadinessLevel.READY
+        assert report.recommendations

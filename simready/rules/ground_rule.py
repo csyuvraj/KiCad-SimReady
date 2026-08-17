@@ -5,7 +5,7 @@ from __future__ import annotations
 from simready.core.models import CheckResult, Schematic, Severity
 from simready.rules.base_rule import BaseRule
 
-GND_NAMES = {"GND", "GRO", "GROUND", "0", "VSS", "AGND", "DGND"}
+GND_NAMES = {"GND", "GROUND", "EARTH", "0", "VSS", "AGND", "DGND", "GNDA", "GNDD"}
 
 
 class GroundReferenceRule(BaseRule):
@@ -15,19 +15,26 @@ class GroundReferenceRule(BaseRule):
     description = "Checks that the schematic has at least one ground reference."
 
     def check(self, schematic: Schematic) -> list[CheckResult]:
+        """Report whether the schematic provides a SPICE ground reference.
+
+        Args:
+            schematic: Schematic to inspect.
+
+        Returns:
+            A single CheckResult describing the ground reference status.
+        """
         results: list[CheckResult] = []
 
-        has_ground_net = any(
-            net.name.upper() in GND_NAMES for net in schematic.nets
-        )
-        has_ground_symbol = any(comp.is_ground for comp in schematic.components)
+        ground_nets = [net.name for net in schematic.nets if net.name.upper() in GND_NAMES]
+        ground_symbols = [comp.reference for comp in schematic.components if comp.is_ground]
 
-        if has_ground_net or has_ground_symbol:
+        if ground_nets or ground_symbols:
+            detected = ", ".join(ground_nets or ground_symbols)
             results.append(
                 CheckResult(
                     rule_name=self.name,
                     passed=True,
-                    message="Ground reference detected in schematic.",
+                    message=f"Ground reference detected in schematic ({detected}).",
                     severity=Severity.INFO,
                 )
             )

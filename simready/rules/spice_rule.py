@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-from simready.core.models import CheckResult, Schematic, Severity
+from simready.core.models import CheckResult, Component, Schematic, Severity
 from simready.rules.base_rule import BaseRule
 
 # Components that typically need SPICE models for simulation
 SPICE_REQUIRED_PREFIXES = ("Q", "U", "D", "M", "J", "X")
-SPICE_REQUIRED_LIB_PATTERNS = ("Transistor", "MOSFET", "Diode", "OpAmp", "Regulator")
+SPICE_REQUIRED_LIB_PATTERNS = (
+    "transistor",
+    "mosfet",
+    "diode",
+    "opamp",
+    "amplifier",
+    "regulator",
+)
 
 
 class SpiceModelRule(BaseRule):
@@ -17,18 +24,22 @@ class SpiceModelRule(BaseRule):
     description = "Checks that active components have SPICE model assignments."
 
     def check(self, schematic: Schematic) -> list[CheckResult]:
+        """Report SPICE model coverage for active components.
+
+        Args:
+            schematic: Schematic to inspect.
+
+        Returns:
+            One CheckResult per active component, or a single informational
+            result when the schematic contains none.
+        """
         results: list[CheckResult] = []
 
         for comp in schematic.components:
-            if comp.is_ground or comp.reference.startswith("#"):
+            if comp.is_power or comp.reference.startswith("#"):
                 continue
 
-            ref_prefix = comp.reference.rstrip("0123456789")
-            needs_spice = ref_prefix in SPICE_REQUIRED_PREFIXES or any(
-                pat in comp.lib_id for pat in SPICE_REQUIRED_LIB_PATTERNS
-            )
-
-            if not needs_spice:
+            if not self._needs_spice_model(comp):
                 continue
 
             if comp.spice_model:
@@ -56,7 +67,7 @@ class SpiceModelRule(BaseRule):
                     )
                 )
 
-        if not any(r.component_ref for r in results):
+        if not results:
             results.append(
                 CheckResult(
                     rule_name=self.name,
@@ -67,3 +78,11 @@ class SpiceModelRule(BaseRule):
             )
 
         return results
+
+    @staticmethod
+    def _needs_spice_model(comp: Component) -> bool:
+        """Return True when the component is an active device needing a model."""
+        lib_id = comp.lib_id.lower()
+        return comp.ref_prefix in SPICE_REQUIRED_PREFIXES or any(
+            pattern in lib_id for pattern in SPICE_REQUIRED_LIB_PATTERNS
+        )

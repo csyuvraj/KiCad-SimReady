@@ -15,10 +15,18 @@ class FootprintRule(BaseRule):
     description = "Checks that components have assigned PCB footprints."
 
     def check(self, schematic: Schematic) -> list[CheckResult]:
+        """Report footprint assignment for every non-power component.
+
+        Args:
+            schematic: Schematic to inspect.
+
+        Returns:
+            One CheckResult per component.
+        """
         results: list[CheckResult] = []
 
         for comp in schematic.components:
-            if comp.is_ground or comp.reference.startswith("#"):
+            if comp.is_power or comp.reference.startswith("#"):
                 continue
 
             footprint = comp.footprint.strip()

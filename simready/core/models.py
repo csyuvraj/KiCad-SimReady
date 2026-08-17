@@ -14,17 +14,44 @@ class Severity(str, Enum):
     WARNING = "warning"
     ERROR = "error"
 
+    @property
+    def weight(self) -> int:
+        """Relative importance used when computing the readiness score.
+
+        Returns:
+            3 for ERROR, 2 for WARNING, 1 for INFO.
+        """
+        return _SEVERITY_WEIGHTS[self]
+
+
+_SEVERITY_WEIGHTS = {
+    Severity.INFO: 1,
+    Severity.WARNING: 2,
+    Severity.ERROR: 3,
+}
+
 
 class ReadinessLevel(str, Enum):
     """Overall schematic simulation readiness level.
-    
+
     Attributes:
-        READY: All error-severity checks passed; schematic is ready to simulate.
+        READY: No failing checks at all; the schematic is ready to simulate.
+        NEEDS_REVIEW: No error-severity failures, but warnings remain.
         NOT_READY: One or more error-severity checks failed; issues must be resolved.
     """
 
     READY = "ready"
+    NEEDS_REVIEW = "needs_review"
     NOT_READY = "not_ready"
+
+    @property
+    def label(self) -> str:
+        """Return a human-readable label for display in reports."""
+        return {
+            ReadinessLevel.READY: "Simulation Ready",
+            ReadinessLevel.NEEDS_REVIEW: "Needs Review",
+            ReadinessLevel.NOT_READY: "Not Simulation Ready",
+        }[self]
 
 
 @dataclass
@@ -37,6 +64,8 @@ class Pin:
         uuid: KiCad unique identifier for the pin.
         connected: Boolean flag indicating if pin has net connection.
         net_name: Name of the net this pin is connected to, if any.
+        position: Absolute (x, y) sheet coordinates in mm, when known.
+        no_connect: True when a KiCad no-connect marker covers the pin.
     """
 
     number: str
@@ -44,6 +73,8 @@ class Pin:
     uuid: str = ""
     connected: bool = False
     net_name: Optional[str] = None
+    position: Optional[tuple[float, float]] = None
+    no_connect: bool = False
 
 
 @dataclass
@@ -88,14 +119,30 @@ class Component:
         return self.properties.get("Sim.Params", "")
 
     @property
+    def ref_prefix(self) -> str:
+        """Return the letter prefix of the reference designator (e.g. "R" for "R12")."""
+        return self.reference.rstrip("0123456789")
+
+    @property
     def is_passive(self) -> bool:
         """Check if component is a passive device (R, C, L).
         
         Returns:
             True if reference prefix is R, C, or L.
         """
-        ref_prefix = self.reference.rstrip("0123456789")
-        return ref_prefix in ("R", "C", "L")
+        return self.ref_prefix in ("R", "C", "L")
+
+    @property
+    def is_power(self) -> bool:
+        """Check if component is a power or ground symbol.
+
+        Returns:
+            True if lib_id belongs to the power library or the reference is
+            an auto-generated power reference (``#PWR``).
+        """
+        return self.lib_id.upper().startswith("POWER:") or self.reference.upper().startswith(
+            "#PWR"
+        )
 
     @property
     def is_ground(self) -> bool:

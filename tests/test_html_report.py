@@ -1,7 +1,5 @@
 """Tests for HTML report generation."""
 
-from pathlib import Path
-
 from simready.core.analyzer import AnalysisReport
 from simready.core.models import CheckResult, Schematic, Severity
 from simready.reports.html_report import HtmlReportGenerator
@@ -82,3 +80,52 @@ class TestHtmlReportGenerator:
         html = HtmlReportGenerator().generate(report)
         assert "<script>" not in html
         assert "&lt;script&gt;" in html
+
+
+class TestReadinessRendering:
+    def _report(self, results):
+        sch = Schematic(filename="test.kicad_sch", project_name="demo")
+        return AnalysisReport(schematic=sch, results=results)
+
+    def test_score_and_level_rendered(self):
+        report = self._report(
+            [
+                CheckResult(rule_name="A", passed=True, message="ok", severity=Severity.INFO),
+                CheckResult(
+                    rule_name="B",
+                    passed=False,
+                    message="warn",
+                    severity=Severity.WARNING,
+                    recommendation="Fix the warning",
+                ),
+            ]
+        )
+        html = HtmlReportGenerator().generate(report)
+        assert "demo" in html
+        assert "Needs Review" in html
+        assert f">{report.readiness_score}<" in html
+
+    def test_recommendations_section(self):
+        report = self._report(
+            [
+                CheckResult(
+                    rule_name="ComponentValueRule",
+                    passed=False,
+                    message="R2 invalid",
+                    severity=Severity.ERROR,
+                    component_ref="R2",
+                    recommendation="Set a valid value for R2",
+                )
+            ]
+        )
+        html = HtmlReportGenerator().generate(report)
+        assert "Recommendations (1)" in html
+        assert "Set a valid value for R2" in html
+
+    def test_no_recommendations_note(self):
+        report = self._report(
+            [CheckResult(rule_name="A", passed=True, message="ok", severity=Severity.INFO)]
+        )
+        html = HtmlReportGenerator().generate(report)
+        assert "No action required." in html
+        assert "Simulation Ready" in html
