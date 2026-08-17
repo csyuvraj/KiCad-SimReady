@@ -5,6 +5,7 @@ from simready.core.models import (
     Component,
     Net,
     Pin,
+    ReadinessLevel,
     Schematic,
     Severity,
 )
@@ -78,3 +79,30 @@ class TestSchematic:
         )
         assert "GND" in sch.net_map
         assert sch.net_map["VCC"].name == "VCC"
+
+
+class TestSeverity:
+    def test_weights_ordered(self):
+        assert Severity.ERROR.weight > Severity.WARNING.weight > Severity.INFO.weight
+
+
+class TestReadinessLevel:
+    def test_labels(self):
+        assert ReadinessLevel.READY.label == "Simulation Ready"
+        assert ReadinessLevel.NEEDS_REVIEW.label == "Needs Review"
+        assert ReadinessLevel.NOT_READY.label == "Not Simulation Ready"
+
+
+class TestComponentHelpers:
+    def test_ref_prefix(self):
+        assert Component(reference="R12").ref_prefix == "R"
+        assert Component(reference="#PWR01").ref_prefix == "#PWR"
+
+    def test_is_power(self):
+        assert Component(reference="#PWR01", lib_id="power:VCC").is_power is True
+        assert Component(reference="R1", lib_id="Device:R").is_power is False
+
+
+class TestPin:
+    def test_no_connect_defaults_false(self):
+        assert Pin(number="1").no_connect is False
