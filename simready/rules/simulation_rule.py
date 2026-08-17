@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from simready.core.models import CheckResult, Schematic, Severity
+from simready.core.models import CheckResult, Component, Schematic, Severity
 from simready.rules.base_rule import BaseRule
 
-SIMULATION_PROPERTIES = ("Sim.Device", "Sim.Pins", "Sim.Params", "Sim.Type")
 PASSIVE_PREFIXES = ("R", "C", "L")
 ACTIVE_PREFIXES = ("Q", "U", "D", "M", "J", "X")
+# Independent sources are only simulatable once their waveform is described.
+SOURCE_PREFIXES = ("V", "I")
 
 
 class SimulationParameterRule(BaseRule):
@@ -17,17 +18,24 @@ class SimulationParameterRule(BaseRule):
     description = "Checks that simulatable components have required Sim.* properties."
 
     def check(self, schematic: Schematic) -> list[CheckResult]:
+        """Report missing ``Sim.*`` metadata for simulatable components.
+
+        Args:
+            schematic: Schematic to inspect.
+
+        Returns:
+            One CheckResult per simulatable component.
+        """
         results: list[CheckResult] = []
 
         for comp in schematic.components:
-            if comp.is_ground or comp.reference.startswith("#"):
+            if comp.is_power or comp.reference.startswith("#"):
                 continue
 
-            ref_prefix = comp.reference.rstrip("0123456789")
-            if ref_prefix not in PASSIVE_PREFIXES + ACTIVE_PREFIXES:
+            if comp.ref_prefix not in PASSIVE_PREFIXES + ACTIVE_PREFIXES + SOURCE_PREFIXES:
                 continue
 
-            missing = self._missing_sim_properties(comp, ref_prefix)
+            missing = self._missing_sim_properties(comp)
 
             if not missing:
                 results.append(
@@ -60,16 +68,32 @@ class SimulationParameterRule(BaseRule):
         return results
 
     @staticmethod
-    def _missing_sim_properties(comp, ref_prefix: str) -> list[str]:
+    def _missing_sim_properties(comp: Component) -> list[str]:
+        """Return the ``Sim.*`` properties the component still needs.
+
+        Args:
+            comp: Component under evaluation.
+
+        Returns:
+            Names of the missing simulation properties, in report order.
+        """
         missing: list[str] = []
-        if ref_prefix in PASSIVE_PREFIXES:
-            if not comp.properties.get("Sim.Device") and not comp.properties.get("Sim.Type"):
+        prefix = comp.ref_prefix
+
+        if prefix in PASSIVE_PREFIXES:
+            if not comp.spice_model and not comp.properties.get("Sim.Type"):
                 missing.append("Sim.Device")
-            if not comp.properties.get("Sim.Pins"):
+            if not comp.sim_pins:
                 missing.append("Sim.Pins")
-        elif ref_prefix in ACTIVE_PREFIXES:
+        elif prefix in ACTIVE_PREFIXES:
             if not comp.spice_model:
                 missing.append("Sim.Device")
             if not comp.sim_pins:
                 missing.append("Sim.Pins")
+        elif prefix in SOURCE_PREFIXES:
+            if not comp.spice_model:
+                missing.append("Sim.Device")
+            if not comp.sim_params:
+                missing.append("Sim.Params")
+
         return missing

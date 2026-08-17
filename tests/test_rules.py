@@ -1,5 +1,7 @@
 """Tests for simulation readiness rules."""
 
+import pytest
+
 from simready.core.models import Component, Net, Pin, Schematic, Severity
 from simready.rules.floating_pin_rule import FloatingPinRule
 from simready.rules.footprint_rule import FootprintRule
@@ -128,3 +130,60 @@ class TestSimulationParameterRule:
         )
         results = SimulationParameterRule().check(sch)
         assert all(r.passed for r in results)
+
+
+class TestComponentValueFormats:
+    @pytest.mark.parametrize(
+        "value", ["10k", "4.7uF", "100n", "1meg", "2k2", "0R", "1e-9", "220 nF", "10"]
+    )
+    def test_accepts_spice_values(self, value):
+        sch = _schematic(Component(reference="R1", value=value))
+        assert all(r.passed for r in ComponentValueRule().check(sch))
+
+    @pytest.mark.parametrize("value", ["", "~", "TBD", "value", "abc", "10 kilo ohms"])
+    def test_rejects_placeholders(self, value):
+        sch = _schematic(Component(reference="C1", value=value))
+        assert all(not r.passed for r in ComponentValueRule().check(sch))
+
+
+class TestPowerSymbolHandling:
+    def _power(self):
+        return Component(
+            reference="#PWR01",
+            lib_id="power:GND",
+            pins=[Pin(number="1")],
+        )
+
+    def test_footprint_rule_skips_power(self):
+        assert FootprintRule().check(_schematic(self._power())) == []
+
+    def test_floating_pin_rule_skips_power(self):
+        assert FloatingPinRule().check(_schematic(self._power())) == []
+
+    def test_simulation_rule_skips_power(self):
+        assert SimulationParameterRule().check(_schematic(self._power())) == []
+
+
+class TestFloatingPinNoConnect:
+    def test_no_connect_pin_passes(self):
+        comp = Component(reference="Q1", pins=[Pin(number="3", no_connect=True)])
+        assert all(r.passed for r in FloatingPinRule().check(_schematic(comp)))
+
+
+class TestSpiceModelDetection:
+    def test_lib_id_pattern_requires_model(self):
+        sch = _schematic(Component(reference="X1", lib_id="Amplifier_Operational:OpAmp"))
+        assert any(not r.passed for r in SpiceModelRule().check(sch))
+
+    def test_passives_do_not_require_model(self):
+        sch = _schematic(Component(reference="R1", lib_id="Device:R", value="10k"))
+        results = SpiceModelRule().check(sch)
+        assert all(r.passed for r in results)
+        assert all(r.component_ref is None for r in results)
+
+
+class TestSimulationSources:
+    def test_source_requires_sim_params(self):
+        sch = _schematic(Component(reference="V1", properties={"Sim.Device": "DC"}))
+        results = SimulationParameterRule().check(sch)
+        assert any("Sim.Params" in r.message for r in results if not r.passed)

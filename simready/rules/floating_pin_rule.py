@@ -16,6 +16,14 @@ class FloatingPinRule(BaseRule):
     description = "Checks for pins that are not connected to any net."
 
     def check(self, schematic: Schematic) -> list[CheckResult]:
+        """Report one result per pin, skipping power symbols and NC pins.
+
+        Args:
+            schematic: Schematic to inspect.
+
+        Returns:
+            One CheckResult per evaluated pin.
+        """
         results: list[CheckResult] = []
 
         connected_set: set[tuple[str, str]] = set()
@@ -24,11 +32,11 @@ class FloatingPinRule(BaseRule):
                 connected_set.add((ref, pin_num))
 
         for comp in schematic.components:
-            if comp.is_ground or comp.reference.startswith("#"):
+            if comp.is_power or comp.reference.startswith("#"):
                 continue
 
             for pin in comp.pins:
-                if pin.name.upper() in OPTIONAL_PIN_NAMES:
+                if pin.no_connect or pin.name.upper() in OPTIONAL_PIN_NAMES:
                     continue
 
                 is_connected = pin.connected or (comp.reference, pin.number) in connected_set
