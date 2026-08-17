@@ -1,0 +1,6 @@
+# KiCad SimReady - Development Dependencies
+# Core plugin has zero runtime dependencies outside KiCad's bundled Python.
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
