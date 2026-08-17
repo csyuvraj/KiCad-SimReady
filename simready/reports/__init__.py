@@ -1,5 +1,1 @@
-"""Report generation modules."""
-
-from simready.reports.html_report import HtmlReportGenerator
-
-__all__ = ["HtmlReportGenerator"]
+"""Report generation for analysis results."""
