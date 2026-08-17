@@ -1,0 +1,385 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+	(paper "A4")
+	(title_block
+		(title "Sample RC Filter")
+		(date "2026-08-17")
+		(rev "1.0")
+		(company "KiCad SimReady")
+	)
+	(lib_symbols)
+	(wire
+		(pts
+			(xy 100 80) (xy 120 80)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "w001")
+	)
+	(wire
+		(pts
+			(xy 120 80) (xy 120 100)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "w002")
+	)
+	(wire
+		(pts
+			(xy 120 100) (xy 140 100)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "w003")
+	)
+	(wire
+		(pts
+			(xy 140 100) (xy 160 100)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "w004")
+	)
+	(wire
+		(pts
+			(xy 160 100) (xy 160 120)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "w005")
+	)
+	(wire
+		(pts
+			(xy 100 80) (xy 100 60)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "w006")
+	)
+	(wire
+		(pts
+			(xy 160 120) (xy 160 140)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "w007")
+	)
+	(label "VIN"
+		(at 100 60 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "lbl001")
+	)
+	(label "VOUT"
+		(at 160 120 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "lbl002")
+	)
+	(global_label "GND"
+		(at 160 140 0)
+		(shape input)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "glbl001")
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 120 80 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "sym001")
+		(property "Reference" "R1"
+			(at 122 77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 122 83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
+			(at 120 80 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "R"
+			(at 120 80 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=passive 2=passive"
+			(at 120 80 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "pin001")
+			(at 100 80 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "pin002")
+			(at 140 80 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:C")
+		(at 160 100 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "sym002")
+		(property "Reference" "C1"
+			(at 162 97 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 162 103 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+			(at 160 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "C"
+			(at 160 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=passive 2=passive"
+			(at 160 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "pin003")
+			(at 140 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "pin004")
+			(at 160 120 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 120 100 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "sym003")
+		(property "Reference" "R2"
+			(at 122 97 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "~"
+			(at 122 103 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 120 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "pin005")
+			(at 120 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "pin006")
+			(at 120 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Simulation_SPICE:NPN")
+		(at 200 100 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "sym004")
+		(property "Reference" "Q1"
+			(at 202 97 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "2N3904"
+			(at 202 103 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_THT:TO-92_Inline"
+			(at 200 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "pin007")
+			(at 190 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "pin008")
+			(at 200 110 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "3"
+			(uuid "pin009")
+			(at 210 100 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+)
